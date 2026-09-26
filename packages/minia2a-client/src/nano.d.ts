@@ -31,7 +31,9 @@ export interface NanoClient {
 /**
  * Create a minia2a client that settles in feeless Nano (XNO) on nano:mainnet,
  * optionally also carrying the USDC-on-Base rail. Loads the optional Nano
- * dependencies lazily, so a USDC-only install is unchanged.
+ * dependencies lazily: they are still installed by default, but a USDC-only
+ * user never loads the Nano graph at runtime (and a missing optional dep
+ * degrades to a clear named error, not an install-time abort).
  * @param opts - Nano wallet key and RPC configuration.
  * @returns a Promise for the Nano-settling client.
  */

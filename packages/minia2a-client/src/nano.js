@@ -22,8 +22,11 @@ import { ExactEvmScheme } from "@x402/evm";
 import { privateKeyToAccount } from "viem/accounts";
 
 // The Nano rail's dependencies (@x402nano/exact, @x402nano/helper) ship as
-// *optional* dependencies and are imported lazily, so `npm i minia2a-client`
-// does not pull the Nano SDK graph for users who settle only in USDC on Base.
+// *optional* dependencies and are imported lazily. `npm i minia2a-client`
+// still installs them (optional deps are installed by default), so the default
+// install graph is NOT smaller; what the lazy import buys is that a USDC-only
+// user never *loads* the Nano SDK graph at runtime, and a missing optional dep
+// degrades to a clear named error below instead of an install-time abort.
 // They load only when createNanoClient() actually needs them.
 
 async function loadNanoDep(specifier, what) {
