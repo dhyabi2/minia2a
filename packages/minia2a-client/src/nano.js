@@ -51,16 +51,23 @@ const BASE = process.env.MINIA2A_BASE || "https://minia2a.uk";
 // Conformance rule (network family == payTo family == asset family), before
 // any settlement code. An accept with network "nano:mainnet" but an EVM-length
 // payTo is silently unpickable: it would be discovered, selected, then break
-// at settlement — the most expensive place to find out. We reject it at
-// selection instead. Same family again for asset: XNO for nano:mainnet.
+// at settlement — the most expensive place to find out. The rejection lands
+// here, inside createPaymentPayload, before a send block is built (selection
+// in @x402/fetch matches on `network` alone, so the family check can't happen
+// there). Same family again for asset: XNO for nano:mainnet.
+//
+// Address decision: accept both canonical `nano_` and legacy `xrb_` prefixes
+// (xrb_ addresses are still valid and spendable on the network), each
+// lower-cased only — the `/i` flag is intentionally not used, so non-canonical
+// NANO_/XRB_ casing is rejected.
 // ---------------------------------------------------------------------------
-const NANO_ADDR_RE = /^nano_[13456789abcdefghijkmnopqrstuwxyz]{60}$/i;
+const NANO_ADDR_RE = /^(?:nano|xrb)_[13456789abcdefghijkmnopqrstuwxyz]{60}$/;
 
 function isNanoAsset(asset) {
   return /^XNO$/i.test(String(asset ?? ""));
 }
 
-export { ConformingExactNanoScheme, NANO_ADDR_RE, isNanoAsset };
+export { ConformingExactNanoScheme, NANO_ADDR_RE, isNanoAsset, makeCall };
 
 /**
  * A scheme wrapper that refuses to sign a Nano accept whose `payTo` or
@@ -89,7 +96,7 @@ class ConformingExactNanoScheme {
     }
     if (!NANO_ADDR_RE.test(String(payTo ?? ""))) {
       throw new Error(
-        `conformance: nano:mainnet payTo must be a nano_ address (got "${payTo}")`
+        `conformance: nano:mainnet payTo must be a nano_ or xrb_ address (got "${payTo}")`
       );
     }
     if (!isNanoAsset(asset)) {
@@ -118,6 +125,18 @@ function makeCall(fetchWithPayment) {
     const headers = { "Content-Type": "application/json", ...opts.headers };
     const timeout = opts.timeout || 60000;
     const body = opts.body !== undefined ? opts.body : JSON.stringify(params);
+
+    if (opts.trial) {
+      // Refuse by name instead of falling through to a paid call: the trial
+      // identifier is EVM-shaped (EIP-55) and a Nano-only holder cannot sign
+      // it, so silently charging the first "trial" call would be the wrong
+      // direction to degrade in.
+      throw new Error(
+        "trial is not supported on the nano rail — the trial identifier is " +
+          "EVM-signed (minia2a trial:{wallet}:...); use createClient(privateKey) " +
+          "or pass evmPrivateKey to carry the USDC rail"
+      );
+    }
 
     const res = await fetchWithPayment(`${BASE}/x402/${svcId}`, {
       method: opts.method || "POST",

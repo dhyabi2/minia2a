@@ -67,7 +67,7 @@ const client = await createNanoClient({ privateKey: process.env.MINIA2A_NANO_PRI
 const res = await client.call("gas"); // { ok: true, ... }
 ```
 
-Which rail a call uses is decided by the `402` challenge the gateway returns — only an `accepts[]` entry that is present is payable, so Nano engages only when the endpoint advertises `nano:mainnet`; otherwise the existing USDC rail is used.
+Which rail a call uses is decided by the `402` challenge the gateway returns — only an `accepts[]` entry that is present is payable. A Nano-only client (no `evmPrivateKey`) pays only endpoints that advertise a `nano:mainnet` accept; to also pay endpoints that advertise only `eip155:8453`, pass `evmPrivateKey` so the USDC-on-Base rail is available from the same client.
 
 **Scope.** This covers settlement for paid calls (a `nano:mainnet` accept + a Nano scheme that can sign it). It does not cover the signed-trial flow, whose identifier is EVM-shaped (`minia2a trial:{wallet}:...`, EIP-55) — an agent holding only a Nano account cannot sign that, so the "no EVM wallet needed" claim is intentionally not made here. The trial path is a separate decision.
 

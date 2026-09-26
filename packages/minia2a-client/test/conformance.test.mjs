@@ -39,10 +39,31 @@ const req = (over) => ({ x402Version: 2, scheme: "exact", network: "nano:mainnet
     await scheme.createPaymentPayload(2, req({ payTo: EVM_PAYTO }));
   } catch (e) {
     threw = true;
-    assert.match(e.message, /must be a nano_ address/);
+    assert.match(e.message, /must be a nano_ address|must be a nano_ or xrb_ address/);
   }
   assert.ok(threw, "EVM payTo under nano:mainnet must be rejected");
-  console.log("PASS wrong-family payTo rejected at selection (point 2)");
+  console.log("PASS wrong-family payTo rejected inside payload creation (point 2)");
+}
+
+// (b2) Legacy xrb_ prefix is still valid on the network -> accepted (point 4).
+{
+  const XRB_PAYTO = "xrb_1xug1q5t7nxoj3ywwzokiea9jz8fq8qfgzp8pbyfr3co3e5xgj755uofu8ue";
+  const out = await scheme.createPaymentPayload(2, req({ payTo: XRB_PAYTO }));
+  assert.ok(out.payload && out.payload.block, "xrb_ payTo accepted");
+  console.log("PASS legacy xrb_ payTo accepted (point 4)");
+}
+
+// (b3) Non-canonical uppercase NANO_/XRB_ casing is rejected (point 4).
+{
+  let threw = false;
+  try {
+    await scheme.createPaymentPayload(2, req({ payTo: NANO_PAYTO.toUpperCase() }));
+  } catch (e) {
+    threw = true;
+    assert.match(e.message, /must be a nano_ or xrb_ address/);
+  }
+  assert.ok(threw, "uppercase NANO_ payTo must be rejected");
+  console.log("PASS non-canonical uppercase NANO_ rejected (point 4)");
 }
 
 // (c) Wrong asset: nano:mainnet + USDC -> rejected.
@@ -85,3 +106,29 @@ const req = (over) => ({ x402Version: 2, scheme: "exact", network: "nano:mainnet
 }
 
 console.log("ALL nano-scheme conformance tests passed");
+
+// Unit test for the trial refusal inside makeCall() (point 2 of the review):
+// opts.trial must throw by name, never fall through to a paid call. makeCall
+// is exported for tests; it returns the `call` function which we drive with a
+// spy fetchWithPayment that would fail the test if ever reached.
+import { makeCall } from "../src/nano.js";
+
+{
+  let fetchReached = false;
+  const fetchWithPayment = async () => {
+    fetchReached = true;
+    return new Response("{}", { status: 200 });
+  };
+  const call = makeCall(fetchWithPayment);
+  let threw = null;
+  try {
+    await call("gas", {}, { trial: true });
+  } catch (e) {
+    threw = e;
+  }
+  assert.ok(threw, "trial must throw on the nano rail");
+  assert.match(threw.message, /trial is not supported on the nano rail/);
+  assert.ok(!fetchReached, "no paid call must be attempted when trial is refused");
+  console.log("PASS opts.trial refused by name, no fetch attempted (point 2)");
+}
+
