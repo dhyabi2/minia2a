@@ -30,7 +30,9 @@ export interface NanoClient {
 
 /**
  * Create a minia2a client that settles in feeless Nano (XNO) on nano:mainnet,
- * optionally also carrying the USDC-on-Base rail.
+ * optionally also carrying the USDC-on-Base rail. Loads the optional Nano
+ * dependencies lazily, so a USDC-only install is unchanged.
  * @param opts - Nano wallet key and RPC configuration.
+ * @returns a Promise for the Nano-settling client.
  */
-export function createNanoClient(opts?: NanoClientOptions): NanoClient;
+export function createNanoClient(opts?: NanoClientOptions): Promise<NanoClient>;

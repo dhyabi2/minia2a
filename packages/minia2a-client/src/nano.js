@@ -3,7 +3,7 @@
 // default. Settles via the x402 "exact" Nano scheme.
 //
 //   import { createNanoClient } from "minia2a-client/nano";
-//   const client = createNanoClient({ privateKey, rpcUrl });
+//   const client = await createNanoClient({ privateKey, rpcUrl });
 //   const res = await client.call("gas");   // auto-pays a 402 in Nano
 //
 // The Nano private key never leaves your process: it only signs the Nano send
@@ -20,8 +20,27 @@
 import { wrapFetchWithPaymentFromConfig } from "@x402/fetch";
 import { ExactEvmScheme } from "@x402/evm";
 import { privateKeyToAccount } from "viem/accounts";
-import { ExactNanoScheme } from "@x402nano/exact";
-import { Helper } from "@x402nano/helper";
+
+// The Nano rail's dependencies (@x402nano/exact, @x402nano/helper) ship as
+// *optional* dependencies and are imported lazily, so `npm i minia2a-client`
+// does not pull the Nano SDK graph for users who settle only in USDC on Base.
+// They load only when createNanoClient() actually needs them.
+
+async function loadNanoDep(specifier, what) {
+  try {
+    return await import(specifier);
+  } catch (err) {
+    throw new Error(
+      `Nano rail unavailable: ${what} (${specifier}) is not installed. ` +
+        `Install it with \`npm i ${specifier}\` to use minia2a-client/nano.`,
+      { cause: err }
+    );
+  }
+}
+
+async function nanoHelperCtor() {
+  return (await loadNanoDep("@x402nano/helper", "the Nano x402 helper")).Helper;
+}
 
 const BASE = process.env.MINIA2A_BASE || "https://minia2a.uk";
 
@@ -47,14 +66,16 @@ export { ConformingExactNanoScheme, NANO_ADDR_RE, isNanoAsset };
  * scheme so both can sit in the same `schemes` array.
  */
 class ConformingExactNanoScheme {
-  constructor(helper) {
-    this._scheme = new ExactNanoScheme(helper);
+  static async build(helper) {
+    const ExactNanoScheme = (
+      await loadNanoDep("@x402nano/exact", "the Nano x402 exact scheme")
+    ).ExactNanoScheme;
+    const s = new ConformingExactNanoScheme();
+    s._scheme = new ExactNanoScheme(helper);
+    return s;
   }
   get scheme() {
     return this._scheme.scheme;
-  }
-  get findDefaultAsset() {
-    return this._scheme.findDefaultAsset;
   }
   async createPaymentPayload(x402Version, paymentRequirements) {
     const { network, payTo, asset, amount } = paymentRequirements;
@@ -142,7 +163,7 @@ function makeCall(fetchWithPayment) {
  * @param {string} [opts.evmPrivateKey] - Optional EVM private key if you also
  *   want the USDC-on-Base rail available from the same client.
  */
-export function createNanoClient({
+export async function createNanoClient({
   privateKey,
   rpcUrl,
   workGenerationUrl,
@@ -158,6 +179,7 @@ export function createNanoClient({
     );
   }
 
+  const Helper = await nanoHelperCtor();
   const helper = new Helper({
     NANO_ACCOUNT_PRIVATE_KEY: privateKey,
     NANO_RPC_URL: rpcUrl || process.env.MINIA2A_NANO_RPC_URL,
@@ -165,7 +187,7 @@ export function createNanoClient({
   });
 
   const schemes = [
-    { network: "nano:mainnet", client: new ConformingExactNanoScheme(helper) },
+    { network: "nano:mainnet", client: await ConformingExactNanoScheme.build(helper) },
   ];
   if (evmPrivateKey || process.env.MINIA2A_PRIVATE_KEY) {
     const evmKey = evmPrivateKey || process.env.MINIA2A_PRIVATE_KEY;

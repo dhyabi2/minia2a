@@ -20,7 +20,7 @@ const fakeHelper = {
   onAfterWorkGeneration() { return this; },
 };
 
-const scheme = new ConformingExactNanoScheme(fakeHelper);
+const scheme = await ConformingExactNanoScheme.build(fakeHelper);
 const req = (over) => ({ x402Version: 2, scheme: "exact", network: "nano:mainnet", asset: "XNO", amount: "1000000000000000000000000", payTo: NANO_PAYTO, maxTimeoutSeconds: 60, extra: {}, ...over });
 
 // (a) Valid Nano accept -> signed, generateSendBlock reached with the right payTo/amount.

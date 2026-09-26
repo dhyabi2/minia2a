@@ -60,9 +60,9 @@ Beside USDC on Base, the client can settle a `402` in **feeless Nano (XNO)** on 
 ```js
 import { createNanoClient } from "minia2a-client/nano";
 
-const client = createNanoClient({ privateKey: process.env.MINIA2A_NANO_PRIVATE_KEY });
+const client = await createNanoClient({ privateKey: process.env.MINIA2A_NANO_PRIVATE_KEY });
 // Settles per-call fees in Nano. Optionally also carry the USDC rail:
-// const client = createNanoClient({ privateKey: nanoKey, evmPrivateKey: evmKey });
+// const client = await createNanoClient({ privateKey: nanoKey, evmPrivateKey: evmKey });
 
 const res = await client.call("gas"); // { ok: true, ... }
 ```
