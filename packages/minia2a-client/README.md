@@ -53,6 +53,22 @@ const r = await client.call("time", {}, { trial: true });
 
 `register()` signs `minia2a register: <wallet>` (EIP-191) locally and POSTs it with your name. No wallet is ever created or held server-side.
 
+## Optional feeless Nano (XNO) settlement
+
+The default settlement is **USDC on Base** via x402. The client also ships an **optional, additive feeless Nano (XNO) exact rail** on `nano:mainnet` — for agents that hold a Nano account and want zero-fee, instant, green settlement (`@x402nano/exact` + `@x402nano/helper`). The Base USDC lane stays the default and is untouched.
+
+```js
+// Enable the Nano lane: it signs feeless XNO payments with a Nano seed.
+const client = createClient(process.env.MINIA2A_PRIVATE_KEY, {
+  nano: { seed: process.env.MINIA2A_NANO_SEED },
+});
+// The seed (64 hex chars) is used only to sign locally; it is never sent to minia2a.
+```
+
+**Reachability.** A Nano payment is only used when the `402` challenge the call returns advertises a **`nano:mainnet` accept** whose `payTo` is a Nano account (`nano_`/`xrb_`) of the same network family. When the marketplace advertises that accept, an agent holding a Nano account can settle feelessly with no EVM wallet and no Base onboarding. Until then the client simply keeps paying in USDC on Base — enabling the option is safe and has no effect unless the endpoint advertises the Nano accept.
+
+Run the scheme tests with `npm test` (node's built-in test runner).
+
 ## CLI
 
 ```bash

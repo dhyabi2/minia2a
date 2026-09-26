@@ -13,6 +13,7 @@
 import { wrapFetchWithPaymentFromConfig } from "@x402/fetch";
 import { ExactEvmScheme } from "@x402/evm";
 import { privateKeyToAccount } from "viem/accounts";
+import { nanoScheme } from "./nano.js";
 
 const BASE = process.env.MINIA2A_BASE || "https://minia2a.uk";
 
@@ -33,8 +34,16 @@ function resolveServiceId(service) {
  *   chars). Falls back to process.env.MINIA2A_PRIVATE_KEY. This wallet pays
  *   per-call fees in USDC on Base; the key is only used to sign locally and is
  *   never sent to minia2a.
+ * @param {object} [options] - Optional client options.
+ * @param {object} [options.nano] - Enable the additive feeless Nano (XNO)
+ *   settlement scheme. Pass { seed } (Nano private seed) or rely on
+ *   MINIA2A_NANO_SEED. The Nano lane is only used when the 402 challenge the
+ *   marketplace returns advertises a payable nano:mainnet accept whose payTo is
+ *   a Nano account; when it does, an agent holding a Nano account can settle
+ *   feelessly with no EVM wallet or Base onboarding. The Base USDC lane stays
+ *   the default and is untouched.
  */
-export function createClient(privateKey) {
+export function createClient(privateKey, options = {}) {
   if (!privateKey) {
     privateKey = process.env.MINIA2A_PRIVATE_KEY;
   }
@@ -48,8 +57,14 @@ export function createClient(privateKey) {
 
   // x402 payment: exact-permit2 USDC settlement on Base. spendControls:false —
   // minia2a endpoints range from $0.001 to $200, above the default $1 cap.
+  // The optional nano scheme is an additive, feeless (XNO) exact rail on
+  // nano:mainnet, used only when the gateway advertises a nano:mainnet accept.
+  const schemes = [{ network: "eip155:8453", client: new ExactEvmScheme(account) }];
+  if (options.nano && (options.nano.enabled || options.nano.seed)) {
+    schemes.push(nanoScheme(options.nano));
+  }
   const fetchWithPayment = wrapFetchWithPaymentFromConfig(globalThis.fetch, {
-    schemes: [{ network: "eip155:8453", client: new ExactEvmScheme(account) }],
+    schemes,
     spendControls: false,
   });
 

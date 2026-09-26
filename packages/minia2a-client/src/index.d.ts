@@ -65,10 +65,27 @@ export interface Minia2aClient {
   status(): Promise<{ ok: boolean; [key: string]: any }>;
 }
 
+/** Options for the optional feeless Nano (XNO) settlement scheme. */
+export interface NanoSchemeOptions {
+  /** Nano private seed (64 hex chars). Falls back to MINIA2A_NANO_SEED. */
+  seed?: string;
+  /** Nano RPC endpoint. Falls back to NANO_RPC_URL, then https://rpc.nano.to. */
+  rpcUrl?: string;
+  /** Set true to enable the Nano lane (also auto-enabled when seed is set). */
+  enabled?: boolean;
+}
+
+/** Client options passed as the second argument to createClient(). */
+export interface CreateClientOptions {
+  /** Optional additive feeless Nano (XNO) settlement scheme. */
+  nano?: NanoSchemeOptions;
+}
+
 /**
  * Create a minia2a client backed by a wallet private key.
  * @param privateKey - Wallet private key (0x-prefixed or bare 64 hex chars).
  *   Falls back to process.env.MINIA2A_PRIVATE_KEY. The key is used only to
  *   sign locally; it is never sent to minia2a.
+ * @param options - Optional client options (e.g. additive Nano settlement).
  */
-export function createClient(privateKey?: string): Minia2aClient;
+export function createClient(privateKey?: string, options?: CreateClientOptions): Minia2aClient;

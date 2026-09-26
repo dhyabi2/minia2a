@@ -35,8 +35,10 @@
     "claude-code"
   ],
   "dependencies": {
-    "@x402/fetch": "^2.24.0",
     "@x402/evm": "^2.24.0",
+    "@x402/fetch": "^2.24.0",
+    "@x402nano/exact": "^0.3.0",
+    "@x402nano/helper": "^0.2.0",
     "viem": "^2.0.0"
   },
   "license": "MIT",
@@ -50,6 +52,7 @@
   },
   "types": "src/index.d.ts",
   "scripts": {
-    "demo": "node demo.js"
+    "demo": "node demo.js",
+    "test": "node --test src/nano.test.js"
   }
 }
