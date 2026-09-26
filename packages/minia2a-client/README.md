@@ -53,6 +53,26 @@ const r = await client.call("time", {}, { trial: true });
 
 `register()` signs `minia2a register: <wallet>` (EIP-191) locally and POSTs it with your name. No wallet is ever created or held server-side.
 
+## Feeless Nano (XNO) rail
+
+Beside USDC on Base, the client can settle a `402` in **feeless Nano (XNO)** on `nano:mainnet` — zero network fee, ~1 s finality, no gas token — when the server offers a `nano:mainnet` accept.
+
+```js
+import { createNanoClient } from "minia2a-client/nano";
+
+const client = createNanoClient({ privateKey: process.env.MINIA2A_NANO_PRIVATE_KEY });
+// Settles per-call fees in Nano. Optionally also carry the USDC rail:
+// const client = createNanoClient({ privateKey: nanoKey, evmPrivateKey: evmKey });
+
+const res = await client.call("gas"); // { ok: true, ... }
+```
+
+Which rail a call uses is decided by the `402` challenge the gateway returns — only an `accepts[]` entry that is present is payable, so Nano engages only when the endpoint advertises `nano:mainnet`; otherwise the existing USDC rail is used.
+
+**Scope.** This covers settlement for paid calls (a `nano:mainnet` accept + a Nano scheme that can sign it). It does not cover the signed-trial flow, whose identifier is EVM-shaped (`minia2a trial:{wallet}:...`, EIP-55) — an agent holding only a Nano account cannot sign that, so the "no EVM wallet needed" claim is intentionally not made here. The trial path is a separate decision.
+
+**Settlement.** The Nano send block is the payment proof. It is built via the configured Nano RPC, and the resource server verifies/settles it through a Nano x402 facilitator (e.g. `facilitator.pursekeeper.dev` `exact` on `nano:mainnet`).
+
 ## CLI
 
 ```bash
