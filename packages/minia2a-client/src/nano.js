@@ -54,7 +54,8 @@ const BASE = process.env.MINIA2A_BASE || "https://minia2a.uk";
 // at settlement — the most expensive place to find out. The rejection lands
 // here, inside createPaymentPayload, before a send block is built (selection
 // in @x402/fetch matches on `network` alone, so the family check can't happen
-// there). Same family again for asset: XNO for nano:mainnet.
+// there). Same family again for asset: exactly "XNO" for nano:mainnet, with
+// the same canonical-casing rule as the address (no /i).
 //
 // Address decision: accept both canonical `nano_` and legacy `xrb_` prefixes
 // (xrb_ addresses are still valid and spendable on the network), each
@@ -64,7 +65,7 @@ const BASE = process.env.MINIA2A_BASE || "https://minia2a.uk";
 const NANO_ADDR_RE = /^(?:nano|xrb)_[13456789abcdefghijkmnopqrstuwxyz]{60}$/;
 
 function isNanoAsset(asset) {
-  return /^XNO$/i.test(String(asset ?? ""));
+  return String(asset ?? "") === "XNO";
 }
 
 export { ConformingExactNanoScheme, NANO_ADDR_RE, isNanoAsset, makeCall };

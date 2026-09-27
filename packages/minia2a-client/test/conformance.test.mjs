@@ -79,6 +79,19 @@ const req = (over) => ({ x402Version: 2, scheme: "exact", network: "nano:mainnet
   console.log("PASS wrong asset rejected (point 2)");
 }
 
+// (c2) Non-canonical asset casing: "xno" is rejected, same rule as the address.
+{
+  let threw = false;
+  try {
+    await scheme.createPaymentPayload(2, req({ asset: "xno" }));
+  } catch (e) {
+    threw = true;
+    assert.match(e.message, /asset must be XNO/);
+  }
+  assert.ok(threw, "non-canonical asset casing under nano:mainnet must be rejected");
+  console.log("PASS non-canonical lower-case xno asset rejected (point 4)");
+}
+
 // (d) Wrong network: scheme is registered for nano:mainnet only.
 {
   let threw = false;
